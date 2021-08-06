@@ -9,6 +9,53 @@ https://gitee.com/openeuler-competition/summer-2021/issues/I3PRRT
 #### 软件架构
 软件架构说明
 
+##### check current id
+
+检查当前的UID是否为root, 兼容Solaris, SunOS和Linux(包括Euler)
+
+##### path
+
+检查SetUID, 若不正常，即退出。
+
+检查当前工作目录，`WorkDir`
+
+##### system info
+
+检查系统信息。
+
+检查内核信息并输出，包括内核版本, 编译使用的gcc版本，编译的时间和release信息。
+
+##### user info
+
+检查用户信息。
+
+检查hostname和id, 检查口令是否以hash存储，检查上一次登录的用户。
+
+##### file premission
+
+检查目录下文件的权限。
+
+##### 软件包版本漏洞检查
+
+利用OVAL，根据软件包版本检查是否存在CVE漏洞。
+
+##### Function 函数
+
+调用函数。
+
+##### MountOption 函数
+
+检查fs的挂载选项。
+
+/etc/fstab 的数据项：设备名称(实际设备名称或设备名称标签), 挂载点, 分区的类型(fs)，挂载选项, dump选项(0/1),fsck选项(0/1)
+
+> 为了增加Linux系统安全性，建议将/tmp目录单独的挂载于一个独立的系统分区之上。但是仅仅挂载还不够，需要在挂载时为该分区指定nodev/nosuid/noexec选项，才能提高tmp文件目录的安全性。
+
+`/tmp`挂载安全的选项参考: https://www.huaweicloud.com/articles/22202d2c18e5c9e28e2ee8374bc9b667.html
+
+##### selinux检查
+
+检查是否开启了SELinux
 
 #### 安装教程
 
