@@ -10,9 +10,13 @@
 #PROGRAM_AUTHOR="c0conut"
 
 #######################################################################
-# check current id
+# pre operations
+# 1.current id check，check if current id has root perms
+# 2.check SetUID, get pwd
+# 3.check if there are results files left from previous scan,
+# if so, delete them
 #######################################################################
-function CurrentIdChk() {
+function PreOp() {
 	local CurrentId=""
 	if [ -x /usr/xpg4/bin/id ]; then #Solaris
 		CurrentId=$(/usr/xpg4/bin/id -u 2>/dev/null)
@@ -30,20 +34,15 @@ function CurrentIdChk() {
 		IsRoot=0
 		ScanMode=1
 	fi
-}
 
-
-#####################################################################
-# path
-# check SetUID and get the path currently working on
-#####################################################################
-function GetPWD() {
 	#check SetUID ("s")
 	if [ -u "$0" ]; then
 		echo -e "\e[0;36mStopped because of unusual SetUID. Exit.\n\033[0m"
 		exit 1
 	fi
 	WorkDir=$(pwd)
+
+	rm oscap* s.txt 2>/dev/null
 }
 
 ########################################################################
@@ -78,12 +77,12 @@ function SysInfoChk() {
 }
 
 ####################################################################
-# 安全策略检查
-# selinux 资源限制
+# security policy check
+# selinux, limitations of resources, password security
 ####################################################################
 function SecCheck() {
-	# SElinux 是否开启
-	SEstatus=`sestatus 2>/dev/null`
+	# SElinux
+	local SEstatus=`sestatus 2>/dev/null`
 	if [ "$SEstatus" ]; then
 		echo -e "\e[1;34mSElinux status:\n\033[0m"
 		cat /etc/selinux/config | grep SELINUX=
@@ -91,13 +90,30 @@ function SecCheck() {
 		echo -e "\e[0;36mNo SELinux found.\n\033[0m"|tee -a $report 2>/dev/null
 	fi
 
-	# 资源限制情况
+	# limitations of resources
 	echo -e "\e[1;34mLimitations for various resources:\n\033[0m"
 	ulimit -a
+
+	# password security
+	local passMaxDays=`cat /etc/login.defs | grep ^PASS_MAX_DAYS`
+	if [ "$passMaxDays" ]; then
+		echo -e "\e[1;34mMaximum numbers of days a password may be used:\033[0m${passMaxDays##*[[:space:]]}"
+	else
+		echo -e "\e[1;34mPASS_MAX_DAYS is not setted.\033[0m"
+	fi
+
+	local passMinLen=`cat /etc/login.defs | grep ^PASS_MIN_LEN`
+	if [ "$passMinLen" ]; then
+		echo -e "\e[1;34mManimum length of a password:\033[0m${passMinLen##*[[:space:]]}"
+	else
+		echo -e "\e[1;34mPASS_MIN_LEN is not setted.\033[0m"
+	fi
 }
 
 ########################################################################
 # user info
+# hostname, id, user accounts info, if passwords are stored as hash,
+# last login
 ########################################################################
 function UserInfoChk() {
 	# hostname
@@ -141,7 +157,7 @@ function UserInfoChk() {
 	fi
 
 	#last log for each user
-	local LastLogUser=`lastlog | grep -v "Never" 2>/dev/null`
+	local LastLogUser=`lastlog 2>/dev/null | grep -v "Never"`
 	if [ "$LastLogUser" ]; then
 		echo -e "\e[1;34mUsers previously logged onto system:\e[0m\n$LastLogUser\n\033[0m" |tee -a $report 2>/dev/null
 	else
@@ -152,25 +168,33 @@ function UserInfoChk() {
 
 #######################################################################
 # file permission/ownership check
-# 文件权限检查需要根据用户的需求
+#
 #######################################################################
 function FilePermChk() {
 	echo -e "\e[1;32mFiles permission and ownership check starts...\033[0m"
-
-	# 无属组的777权限文件
-	echo -e "\e[1;32m\nFind files have 777 perms without group belonged to from root dir:\033[0m"
 	echo -e "\e[0;32mIt may take several minutes.\033[0m"
+
+	# all files with "s" perm
+	echo -e "\e[1;32m\nFind files have s permission. Please check it in s.txt\033[0m"
+	find / -type f -perm -4000 -o -perm -2000 -print 2>/dev/null| xargs ls -al > s.txt
+
+	# 777 perm files belonged to nogroup
+	echo -e "\e[1;32m\nFind files have 777 perms without group belonged to from root dir:\033[0m"
 	find / -perm 777 -nogroup 2>/dev/null
+
+	# orphan files
+	echo -e "\e[1;32m\nFind orphan files:\033[0m"
+	find / -nouser -o -nogroup 2>/dev/null
 
 	Issue=0
 	IssueType=0
 	ShowPermissionErr=0 # 1-currently scan is not run by root
 
-	echo -e "\e[0;36mPlease input a path to check e.g.\e[1;35m.\e[0;36m or \e[1;35mnext\e[0;36m to execute the next instruction.\033[0m"
+	echo -e "\e[0;36m\nPlease input a path to check e.g.\e[1;35m.\e[0;36m or \e[1;35mnext\e[0;36m to execute the next instruction.\033[0m"
 	echo -e "\e[0;36mAnd then input the perm you want to check e.g.\e[1;35mr--------\e[0;36m.or \e[1;35mnext\e[0;36m to skip this step.\033[0m"
 	echo -e "Defualtly, \e[1;35mrwxrwxrwx\e[0;36m will be checked."
 	echo -e "\e[1;32mPlease input a path:\033[0m"
-	read FilesPath #with bash files to do tests
+	read FilesPath
 
 	while [[ "$FilesPath" != "next" ]]; do
 		echo -e "\e[1;32mPlease input the target permissions:\033[0m"
@@ -221,19 +245,19 @@ function FilePermChk() {
 
 		done
 		echo -e "\e[1;32mPlease input a path:\033[0m"
-		read FilesPath #with bash files to do tests
+		read FilesPath
 	done
 }
 
 ####################################################################
-# 软件包版本漏洞检查
+# vuln check according to OVAL file
 ####################################################################
 function OVALChk() {
-	# 检查使用的包管理器, 安装oscap
+	# install oscap
 	if [ "$(apt -v 2>/dev/null)" ]; then
-		#使用apt作为包管理器
+		# use apt
 		echo -e "\e[1;34mThis device uses apt.\n\033[0m" |tee -a $report 2>/dev/null
-		# 检查是否有oscap工具
+		# if oscap is installed
 		if [ "$(oscap -h 2>/dev/null)" ]; then
 			:
 		else
@@ -241,10 +265,10 @@ function OVALChk() {
 			sudo apt-get install libopenscap8
 		fi
 	elif [ "$(yum --version 2>/dev/null)" ]; then
-		# 使用yum作为包管理器
+		# use yum
 		echo -e "\e[1;34mThis device uses yum.\n\033[0m" |tee -a $report 2>/dev/null
 
-		# 检查是否有oscap工具
+		# if oscap is installed
 		if [ "$(oscap -h 2>/dev/null)" ]; then
 			:
 		else
@@ -253,7 +277,7 @@ function OVALChk() {
 		fi
 	fi
 
-	# 检查oval文件
+	# check OVAL file
 	# release id
 	tmpStr=`cat /etc/*-release | grep ^ID=`
 	IFS='='
@@ -294,27 +318,14 @@ function OVALChk() {
 ########################################################################
 # log auditing
 ########################################################################
+function LogAudit() {
+:
+}
 
-
-
-########################################################################
-# config file check
-########################################################################
-
-
-####################################################################
-# 函数调用部分
-####################################################################
 
 #####################################################################
-# 常量
-#####################################################################
-FSTAB='/etc/fstab'
-GRUB_CFG='/boot/grub/grub.cfg' #/boot/grub2/grub.cfg
-
-#####################################################################
-# 函数调用
-# Function [functionName函数名] [对应函数的参数]
+# Function
+# Function [functionName] [var1 var2 ...]
 #####################################################################
 function Function {
 	functionName=$1 #第一个参数，函数名
@@ -329,7 +340,7 @@ function Function {
 }
 
 ###################################################################
-# 自定义函数
+# myFunction
 ###################################################################
 
 #function myFunction() {
@@ -338,7 +349,7 @@ function Function {
 #}
 
 #####################################################################
-#  程序开始
+#  Program Starts
 #####################################################################
 
 #banner
@@ -353,8 +364,7 @@ echo -e "-----------------------------------------------\033[0m"
 echo -e "\e[1;34m\n-----------------------------------------------"
 echo "System information check start"
 echo -e "-----------------------------------------------\033[0m\n"
-CurrentIdChk
-GetPWD
+PreOp
 SysInfoChk
 SecCheck
 
