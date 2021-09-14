@@ -1,10 +1,60 @@
 # Summer2021-No.110 操作系统安全漏洞扫描与报警项目
 
+
+<!-- vim-markdown-toc GFM -->
+
+* [介绍](#介绍)
+* [配色](#配色)
+* [css](#css)
+* [模块说明](#模块说明)
+	* [local scan 本地扫描模块](#local-scan-本地扫描模块)
+		* [PreOp 预操作](#preop-预操作)
+		* [SysInfoChk 系统信息检查](#sysinfochk-系统信息检查)
+		* [SecCheck 安全策略检查](#seccheck-安全策略检查)
+		* [UserInfoChk 用户信息检查](#userinfochk-用户信息检查)
+		* [FilePermChk 文件权限检查](#filepermchk-文件权限检查)
+		* [OVALChk 软件包版本漏洞检查](#ovalchk-软件包版本漏洞检查)
+		* [Function 函数调用](#function-函数调用)
+	* [ER emergency response 应急响应模块](#er-emergency-response-应急响应模块)
+		* [BasicCheck](#basiccheck)
+		* [SensitiveFileCheck](#sensitivefilecheck)
+		* [FilesChanged](#fileschanged)
+		* [ProcAnalyse](#procanalyse)
+		* [HiddenProc](#hiddenproc)
+		* [HistoryCheck](#historycheck)
+		* [UserAnalyse](#useranalyse)
+		* [CronCheck](#croncheck)
+		* [WebshellCheck](#webshellcheck)
+
+<!-- vim-markdown-toc -->
+
 ## 介绍
 
 Euler Guardian: EulerOS 操作系统风险评估系统
 
-https://gitee.com/openeuler-competition/summer-2021/issues/I3PRRT
+gitee地址：
+
+https://gitee.com/openeuler-competition/summer2021-110
+
+github地址：
+
+https://github.com/Crane-Mocker/Euler-Guardian
+
+## 配色
+
+|color|info|
+|---|---|
+|blue| process display|
+|default|information display|
+|green|normal|
+|yellow|low risk|
+|red|high risk|
+|purple|suggesion to repair|
+
+## css
+
+初始化CSS来自：
+https://necolas.github.io/normalize.css/8.0.1/normalize.css
 
 ## 模块说明
 
@@ -56,49 +106,91 @@ https://gitee.com/openeuler-competition/summer-2021/issues/I3PRRT
 
 详见代码注释
 
-#### 基本检查
+#### BasicCheck
 
-`/tmp`下文件 `init.d`下services, `$PATH`
+基本检查
 
-#### 文件检查
+1. iptables防火墙规则
 
-输入文件类型、指定目录，检查该目录下24h改变过的/有777权限的该类型文件
+2. 开放的TCP, UDP端口
 
-输入时间、指定目录，检查该目录下该时间改变过的文件
+- systemd-resolve
+systemd-resolve 是 Ubuntu 下 DNS 解析相关的命令，能使用它来操作 DNS 相关的功能。
+- avahi
+Zero configuration networking(zeroconf)零配置网络服务规范，是一种用于自动生成可用IP地址的网络技术，不需要额外的手动配置和专属的配置服务器。
+Avahi 是Zeroconf规范的开源实现，常见使用在Linux上。包含了一整套多播DNS(multicastDNS)/DNS-SD网络服务的实现。
 
-#### 进程检查
+3. init.d services
 
-网络连接命令检查可疑PID
+4. `$PATH`
 
-输入PID, 查看详情
+#### SensitiveFileCheck
 
-检查隐藏的process
+敏感文件检查
 
-#### history和log检查
+1. 检查加载到内核的不常见module
 
-检查命令记录中的wget ssh scp tar zip, 匹配ssh中IP
+tmpArr[]:
 
-检查有root权限/能登录的users, 列出所有用户最后一次登录，列出用户登录情况
+|0|1|2|
+|---|---|---|
+|Module|Size|Used by|
 
-#### webshell检查
+#### FilesChanged
+
+被改变的文件检查
+
+1. 文件打开，但是文件已被删除(除浏览器)
+
+tmpArr[]
+
+|0|1|2|3|4|5|6|7|8|9|
+|---|---|---|---|---|---|---|---|---|---|
+|COMMAND|PID|USER|FD|TYPE|DEVICE|SIZE/OFF|NLINK|NODE|NAME|
+
+
+2. 文件改变时间检查
+
+检查7天之内，指定目录下ctime改变
+
+- atime: access time, 在读取文件或者执行文件时更改的
+- ctime: change time, 在写入文件、更改所有者、权限或链接设置时随Inode内容更改而更改
+- mtime：modify time, 写入文件时更改
+
+#### ProcAnalyse
+
+进程检查
+
+检查proc使用CPU的百分比是否多于n%
+
+#### HiddenProc
+
+检查隐藏的process, 并按升序排序
+
+#### HistoryCheck
+
+1. 检查history中wget
+
+2. 检查history中ssh
+
+3. 检查是否有ssh的root用户口令爆破
+
+#### UserAnalyse
+
+1. 检查有root权限的用户是否为root
+
+2. 检查空口令用户
+
+3. 可登陆用户
+
+4. 所有用户的上次登录情况
+
+#### CronCheck
+
+1. root的crontab files检查
+
+2. cron后门检查
+
+#### WebshellCheck
 
 基于文件的webshell检查, 支持php asp jsp
-
-## 安装教程
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-## 使用说明
-
-1.  xxxx
-2.  xxxx
-3.  xxxx
-
-## 参与贡献
-
-1.  Fork 本仓库
-2.  新建 Feat_xxx 分支
-3.  提交代码
-4.  新建 Pull Request
