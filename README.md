@@ -11,9 +11,10 @@
 		* [SysInfoChk 系统信息检查](#sysinfochk-系统信息检查)
 		* [SecCheck 安全策略检查](#seccheck-安全策略检查)
 		* [UserInfoChk 用户信息检查](#userinfochk-用户信息检查)
-		* [FilePermChk 文件权限检查](#filepermchk-文件权限检查)
+		* [UserIdenChk 用户身份检查](#useridenchk-用户身份检查)
+		* [FileChk 文件权限检查](#filechk-文件权限检查)
+		* [AuditChk 操作系统安全审计](#auditchk-操作系统安全审计)
 		* [OVALChk 软件包版本漏洞检查](#ovalchk-软件包版本漏洞检查)
-		* [Function 函数调用](#function-函数调用)
 	* [ER emergency response 应急响应模块](#er-emergency-response-应急响应模块)
 		* [BasicCheck](#basiccheck)
 		* [SensitiveFileCheck](#sensitivefilecheck)
@@ -48,29 +49,44 @@ https://necolas.github.io/normalize.css/8.0.1/normalize.css
 
 ### local scan 本地扫描模块
 
+本模块需以root权限运行。
+
+运行完成后将生成报告。
+
+![LS-report](pic/LS-report.gif)
+![LS-report](pic/LS-report-2.png)
+![LS-SSG](pic/LS-SSG.png)
+![LS-OVAL](pic/LS-OVAL.png)
+
 #### PreOp 预操作
 
 1. 检查current id, 判断是否有root权限
 
-2. 检查SetUID, 获得pwd
+2. 检查SetUID
 
-3. 检查是否有之前检查留下的文件，若有，则删除
+3. 检查是否有之前检查留下的文件s.txt，若有，则删除
 
 #### SysInfoChk 系统信息检查
 
 检查系统信息。
 
-检查内核信息并输出，包括内核版本, 编译使用的gcc版本，编译的时间和release信息。
-
 #### SecCheck 安全策略检查
 
-检查是否开启了SELinux, 检查资源的限制情况, 检查口令安全策略
+1. 检查是否开启了SELinux
+2. 检查资源的限制情况
+
+![LS-sys](pic/LS-sys.png)
 
 #### UserInfoChk 用户信息检查
 
 检查用户信息。
 
-检查hostname和id, 检查口令是否以hash存储，检查上一次登录的用户。
+![LS-user](pic/LS-user-0.png)
+
+1. 检查hostname
+2. id
+3. 检查口令是否以hash存储
+4. 检查上一次登录的用户。
 
 #### UserIdenChk 用户身份检查
 
@@ -114,23 +130,40 @@ https://blog.csdn.net/xiezuoyong/article/details/49890695
 
 7.空口令用户检查
 
-#### FilePermChk 文件权限检查
+#### FileChk 文件权限检查
 
-查找系统中所有含s权限的文件。
+![LS-file](pic/LS-file.png)
 
-查找无属组的777权限文件。
+1. 查找系统中所有含s权限的文件。
 
-查找孤儿文件。
+2. 查找无属组的777权限文件。
 
-查找指定目录下文件的权限, 默认rwxrwxrwx权限。（文件权限的检查和用户的需求有很大关系。）
+3. 查找孤儿文件。
+
+#### AuditChk 操作系统安全审计
+
+Linux Auditing System
+对于CentOS系:需要audit, audit-libs
+对于debian系:需要auditd
+
+对于openEuler的安全加固
+(to do)
+文档：
+https://docs.openeuler.org/zh/docs/20.03_LTS/docs/SecHarden/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E5%8A%A0%E5%9B%BA%E6%A6%82%E8%BF%B0.html
+https://docs.openeuler.org/zh/docs/20.03_LTS/docs/SecHarden/%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E5%B7%A5%E5%85%B7.html
+
 
 #### OVALChk 软件包版本漏洞检查
 
-利用OVAL，根据软件包版本检查是否存在CVE漏洞。
+利用OVAL和oscap，根据软件包版本检查是否存在CVE漏洞和安全配置。
 
-#### Function 函数调用
+![LS-SSG](pic/LS-SSG-cli.png)
 
-调用函数。
+基线库来自：
+https://github.com/ComplianceAsCode/content
+https://oval.cisecurity.org/repository/download
+https://security-metadata.canonical.com
+https://www.redhat.com/security/data/oval/v2/
 
 ### ER emergency response 应急响应模块
 
@@ -252,3 +285,4 @@ tmpArr[]
 - 安恒: 勒索病毒应急与响应手册
 - 绿盟: 应急响应技术指南
 - 等保2.0: GBT25070-2019信息安全技术网络安全等级保护安全设计技术要求
+- Minimum Security Requirements for Multi-User Operating Systems

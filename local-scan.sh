@@ -44,7 +44,7 @@ function PreOp() {
 		exit
 	fi
 
-	rm oscap* res/s.txt 2>/dev/null
+	rm res/s.txt 2>/dev/null
 }
 
 ########################################################################
@@ -74,40 +74,49 @@ function SysInfoChk() {
 	local hardwareP=`uname -i`
 	echo -e "\e[1;34mPlatform:\033[0m $hardwareP"
 
+	echo "<div class='each-part'>
+		<h2><a href='#'>System Information</a></h2>
+		<p>OS: ${releaseNameStr} ${releaseVersionID}</p>
+		<p>Kernel: ${kernelName} ${kernelRelease}</p>
+		<p>Platform: ${hardwareP}</p>
+	" >> ./report/EG_report_${timeStamp}.html
 }
 
 ####################################################################
 # security policy check
-# selinux, limitations of resources, password security
+# selinux, limitations of resources
 ####################################################################
 function SecCheck() {
 	# SElinux
 	local SEstatus=`sestatus 2>/dev/null`
 	if [ "$SEstatus" ]; then
 		echo -e "\e[1;34mSElinux status:\n\033[0m"
-		cat /etc/selinux/config | grep SELINUX=
+		local tmpStr=`cat /etc/selinux/config | grep SELINUX=`
+		echo "$tmpStr"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		SELinux status:</br>
+		</span>
+		${tmpStr}</p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
-		echo -e "\e[0;36mNo SELinux found.\n\033[0m" 2>/dev/null
+		echo -e "\e[1;33mLow risk. SELinux not found\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		SELinux not found
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	fi
 
 	# limitations of resources
-	echo -e "\e[1;34mLimitations for various resources:\n\033[0m"
+	echo -e "\n\e[1;34mLimitations for various resources:\033[0m"
 	ulimit -a
-
-	# password security
-	local passMaxDays=`cat /etc/login.defs | grep ^PASS_MAX_DAYS`
-	if [ "$passMaxDays" ]; then
-		echo -e "\e[1;34mMaximum numbers of days a password may be used:\033[0m${passMaxDays##*[[:space:]]}"
-	else
-		echo -e "\e[1;34mPASS_MAX_DAYS is not setted.\033[0m"
-	fi
-
-	local passMinLen=`cat /etc/login.defs | grep ^PASS_MIN_LEN`
-	if [ "$passMinLen" ]; then
-		echo -e "\e[1;34mManimum length of a password:\033[0m${passMinLen##*[[:space:]]}"
-	else
-		echo -e "\e[1;34mPASS_MIN_LEN is not setted.\033[0m"
-	fi
+	tmpStr=`ulimit -a`
+	echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+	Limitations for various resources:
+	</span>
+	</br>
+	${tmpStr}
+	</p>
+	" >> ./report/EG_report_${timeStamp}.html
 }
 
 ########################################################################
@@ -116,10 +125,15 @@ function SecCheck() {
 # last login
 ########################################################################
 function UserInfoChk() {
+	echo "<div class='each-part'>
+		<h2><a href='#'>User Information</a></h2>" >> ./report/EG_report_${timeStamp}.html
+
 	# hostname
 	local Hostname=`hostname 2>/dev/null`
 	if [ "$Hostname" ]; then
-		echo -e "\e[1;34mHostname:\e[00m\n$Hostname\n\033[0m" 2>/dev/null
+		echo -e "\e[1;34mHostname: \e[00m$Hostname\n\033[0m" 2>/dev/null
+		echo "<p>Hostname: ${Hostname}
+		</p>" >> ./report/EG_report_${timeStamp}.html
 	else
 		echo -e "\e[0;36mhostname failed.\n\033[0m" 2>/dev/null
 	fi
@@ -128,6 +142,10 @@ function UserInfoChk() {
 	local Id=`id 2>/dev/null`
 	if [ "$Id" ]; then
 		echo -e "\e[1;34mCurrent user and group IDs:\e[00m\n$Id\n\033[0m" 2>/dev/null
+		echo -e "<p>Current user and group IDs:
+		</br>
+		${Id}
+		</p>" >> ./report/EG_report_${timeStamp}.html
 	else
 		echo -e "\e[0;36mid failed.\n\033[0m" 2>/dev/null
 	fi
@@ -149,6 +167,10 @@ function UserInfoChk() {
 		local HashPw=`grep -v '^[^:]*:[x]' /etc/passwd 2>/dev/null`
 		if [ "$HashPw" ]; then
 			echo -e "\e[1;34mFound password stored in /etc/passwd as hash:\n\033[0m$HashPw\n" 2>/dev/null
+			echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+			Found password stored in /etc/passwd as hash.
+			</span>
+			</p>" >> ./report/EG_report_${timeStamp}.html
 		else
 			echo -e "\e[0;34mNo password is stored in /etc/passwd as hash.\n\033[0m" 2>/dev/null
 		fi
@@ -163,6 +185,8 @@ function UserInfoChk() {
 	else
 		echo -e "\e[0;36mCan't find /var/log/lastlog.\n\033[0m" 2>/dev/null
 	fi
+
+	echo "</div>" >> ./report/EG_report_${timeStamp}.html
 }
 
 ########################################################################
@@ -171,6 +195,9 @@ function UserInfoChk() {
 # last login
 ########################################################################
 function UserIdenChk() {
+	echo "<div class='each-part'>
+		<h2><a href='#'>User identity and access control/a></h2>" >> ./report/EG_report_${timeStamp}.html
+
 	# basic password configuration
 	local pwMaxDay=`cat /etc/login.defs | grep ^PASS 2>/dev/null | grep PASS_MAX_DAYS 2>/dev/null| egrep ^[0-9]`
 	local pwMinDay=`cat /etc/login.defs | grep ^PASS 2>/dev/null | grep PASS_MIN_DAYS 2>/dev/null| egrep ^[0-9]`
@@ -179,32 +206,68 @@ function UserIdenChk() {
 
 	if [[ "$pwMaxDay" == "" ]] || [[ $pwMaxDay -eq 99999 ]]; then
 		echo -e "\e[1;33mLow risk. No limitation of password expired days\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		No limitation of password expired days
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
 		echo -e "\e[1;32mNormal.\e[1;34mDays for a password to expire:\033[0m $pwMaxDay"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		Days for a password to expire: ${pwMaxDay}
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	fi
 
 	if [[ "$pwMinDay" == "" ]]; then
 		echo -e "\e[1;33mLow risk. No limitation of days to wait after last change of password\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		No limitation of days to wait after last change of password
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
 		echo -e "\e[1;32mNormal.\e[1;34mMin days to wait after last change of password:\033[0m $pwMinDay"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		Min days to wait after last change of password: ${pwMinDay}
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	fi
 
 	if [[ "$pwMinLen" == "" ]]; then
 		echo -e "\e[1;33mLow risk. No limitation of password min length\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		No limitation of password min length
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
 		echo -e "\e[1;32mNormal.\e[1;34mMin length of password:\033[0m $pwMinLen"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		Min length of password: ${pwMinLen}
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	fi
 
 	if [[ "$pwWarnAge" == "" ]]; then
 		echo -e "\e[1;33mLow risk. Did not set a date to get warning before password expiration\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		Did not set a date to get warning before password expiration
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
 		echo -e "\e[1;32mNormal.\e[1;34mDays to receive warning before password expiration:\033[0m $pwWarnAge"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		Days to receive warning before password expiration: ${pwWarnAge}
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	fi
 
 	#pam password config
 	local pamCracklib=`cat /etc/pam.d/system-auth 2>/dev/null | grep pam_cracklib.so 2>/dev/null`
 	if [[ "$pamCracklib" == "" ]]; then
 		echo -e "\e[1;33mLow risk. Cracklib did not find"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		Cracklib did not find
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
 		local pamRetry=`echo $pamCracklib | grep -oE 'retry=[1-9]' 2>/dev/null`
 		if [[ "$pamRetry" == "" ]]; then
@@ -257,6 +320,18 @@ function UserIdenChk() {
 		#echo "pamDictPath $pamDictPath"
 		echo -e "\e[1;32mNormal. Cracklib found.\033[0m"
 		echo -e "\e[0;32mRetry times: $pamRetry\tMin num of different chars: $pamDifok\nMin length of password: $pamMinLen\tMin num of upper case chars: $pamUcredit\nMin num of lower case chars: $pamLcredit\tMin num of numbers: $pamDcredit\nPassword dictionary path: $pamDictPath\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		Cracklib found.
+		</span></p>
+		<p>Retry times: ${pamRetry} </br>
+		Min num of different chars: ${pamDifok} </br>
+		Min length of password: ${pamMinLen} </br>
+		Min num of upper case chars: ${pamUcredit} </br>
+		Min num of lower case chars: ${pamLcredit} </br>
+		Min num of numbers: ${pamDcredit} </br>
+		Password dictionary path: ${pamDictPath}
+		</p>
+		" >> ./report/EG_report_${timeStamp}.html
 	fi
 
 	# user without password
@@ -264,95 +339,155 @@ function UserIdenChk() {
 	local pwUsers=`awk -F: 'length($2)==0 {print $1}' /etc/shadow 2>/dev/null`
 	if [[ "$pwUsers" == "" ]]; then
 		echo -e "\e[1;32mNormal. Did not find user without password.\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		Did not find user without password
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
 	else
 		for eachUser in $pwUsers; do
 			echo -e "\e[1;31mHigh risk. Found user without password: $eachUser\033[0m"
+			echo "<p><span style='padding-left: 19px; background: url(../template/pic/high.png) no-repeat;'>
+			Found user without password: ${eachUser}
+			</span></p>
+			" >> ./report/EG_report_${timeStamp}.html
 		done
 		echo -e "\e[0;35mSuggestion: Delete the high risk users\033[0m"
 	fi
+
+	echo "</div>" >> ./report/EG_report_${timeStamp}.html
 }
 
 #######################################################################
 # file permission/ownership check
 #
 #######################################################################
-function FilePermChk() {
-	echo -e "\e[1;32mFiles permission and ownership check starts...\033[0m"
-	echo -e "\e[0;32mIt may take several minutes.\033[0m"
+function FileChk() {
+	echo "<div class='each-part'>
+		<h2><a href='#'>Files Check</a></h2>
+	" >> ./report/EG_report_${timeStamp}.html
 
 	# all files with "s" perm
-	echo -e "\e[1;32m\nFind files have s permission. Please check it in s.txt\033[0m"
+	echo -e "\e[1;34mChecking files which have s permission"
+	echo -e "\e[0;34mIt may take several minutes.\033[0m"
 	find / -type f -perm -4000 -o -perm -2000 -print 2>/dev/null| xargs ls -al > res/s.txt
+	# s.txt size != 0
+	if [ $(du -b res/s.txt | grep -oE ^[0-9]*) -ne 0 ]; then
+		echo -e "\e[1;33mLow risk. Files with s perm found. Please check them in res/s.txt\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+		Files with s perm found. Please check them in res/s.txt
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
+	# s.txt size == 0
+	else
+		echo -e "\e[1;32mNormal. No files with s perm found\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		No files with s perm found
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
+	fi
 
 	# 777 perm files belonged to nogroup
-	echo -e "\e[1;32m\nFind files have 777 perms without group belonged to from root dir:\033[0m"
-	find / -perm 777 -nogroup 2>/dev/null
+	echo -e "\n\e[1;34mChecking files have 777 perms without group belonged to\033[0m"
+	file777Perm=`find / -perm 777 -nogroup 2>/dev/null`
+	if [[ "$file777Perm" == "" ]]; then
+		echo -e "\e[1;32mNormal. No files having 777 perm without group belonged to\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		No files having 777 perm without group belonged to
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
+	else
+		echo -e "\e[1;31mHigh risk. Found:\n\033[0m$file777Perm"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/high.png) no-repeat;'>
+		Found files having 777 perm without group belonged to:
+		</span>
+		</br>
+		${file777Perm}
+		</p>
+		" >> ./report/EG_report_${timeStamp}.html
+	fi
 
 	# orphan files
-	echo -e "\e[1;32m\nFind orphan files:\033[0m"
-	find / -nouser -o -nogroup 2>/dev/null
+	echo -e "\n\e[1;34mChecking orphan files\033[0m"
+	orphanFile=`find / -nouser -o -nogroup 2>/dev/null`
+	if [[ "$orphanFile" == "" ]]; then
+		echo -e "\e[1;32mNormal. No orphan file found\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		No orphan file found
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
+	else
+		echo -e "\e[1;31mHigh risk. Found:\n\033[0m$orphanFile"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/high.png) no-repeat;'>
+		Found orphan files:
+		</span>
+		</br>
+		${orphanFile}
+		</p>
+		" >> ./report/EG_report_${timeStamp}.html
+	fi
 
-	Issue=0
-	IssueType=0
-	ShowPermissionErr=0 # 1-currently scan is not run by root
+	echo -e "\n\e[1;34mChecking unusual modules loaded in kernel.\033[0m"
+	unusualMod=`lsmod | egrep -v "ablk_helper|ac97_bus|acpi_power_meter|aesni_intel|ahci|ata_generic|ata_piix|auth_rpcgss|binfmt_misc|bluetooth|bnep|bnx2|bridge|cdrom|cirrus|coretemp|crc_t10dif|crc32_pclmul|crc32c_intel|crct10dif_common|crct10dif_generic|crct10dif_pclmul|cryptd|dca|dcdbas|dm_log|dm_mirror|dm_mod|dm_region_hash|drm|drm_kms_helper|drm_panel_orientation_quirks|e1000|ebtable_broute|ebtable_filter|ebtable_nat|ebtables|edac_core|ext4|fb_sys_fops|floppy|fuse|gf128mul|ghash_clmulni_intel|glue_helper|grace|i2c_algo_bit|i2c_core|i2c_piix4|i7core_edac|intel_powerclamp|ioatdma|ip_set|ip_tables|ip6_tables|ip6t_REJECT|ip6t_rpfilter|ip6table_filter|ip6table_mangle|ip6table_nat|ip6ta ble_raw|ip6table_security|ipmi_devintf|ipmi_msghandler|ipmi_si|ipmi_ssif|ipt_MASQUERADE|ipt_REJECT|iptable_filter|iptable_mangle|iptable_nat|iptable_raw|iptable_security|iTCO_vendor_support|iTCO_wdt|jbd2|joydev|kvm|kvm_intel|libahci|libata|libcrc32c|llc|lockd|lpc_ich|lrw|mbcache|megaraid_sas|mfd_core|mgag200|Module|mptbase|mptscsih|mptspi|nf_conntrack|nf_conntrack_ipv4|nf_conntrack_ipv6|nf_defrag_ipv4|nf_defrag_ipv6|nf_nat|nf_nat_ipv4|nf_nat_ipv6|nf_nat_masquerade_ipv4|nfnetlink|nfnetlink_log|nfnetlink_queue|nfs_acl|nfsd|parport|parport_pc|pata_acpi|pcspkr|ppdev|rfkill|sch_fq_codel|scsi_transport_spi|sd_mod|serio_raw|sg|shpchp|snd|snd_ac97_codec|snd_ens1371|snd_page_alloc|snd_pcm|snd_rawmidi|snd_seq|snd_seq_device|snd_seq_midi|snd_seq_midi_event|snd_timer|soundcore|sr_mod|stp|sunrpc|syscopyarea|sysfillrect|sysimgblt|tcp_lp|ttm|tun|uvcvideo|videobuf2_core|videobuf2_memops|videobuf2_vmalloc|videodev|virtio|virtio_balloon|virtio_console|virtio_net|virtio_pci|virtio_ring|virtio_scsi|vmhgfs|vmw_balloon|vmw_vmci|vmw_vsock_vmci_transport|vmware_balloon|vmwgfx|vsock|xfs|xt_CHECKSUM|xt_conntrack|xt_state|raid*|tcpbbr|btrfs|.*diag|psmouse|ufs|linear|msdos|cpuid|veth|xt_tcpudp|xfrm_user|xfrm_algo|xt_addrtype|br_netfilter|input_leds|sch_fq|ib_iser|rdma_cm|iw_cm|ib_cm|ib_core|.*scsi.*|tcp_bbr|pcbc|autofs4|multipath|hfs.*|minix|ntfs|vfat|jfs|usbcore|usb_common|ehci_hcd|uhci_hcd|ecb|crc32c_generic|button|hid|usbhid|evdev|hid_generic|overlay|xt_nat|qnx4|sb_edac|acpi_cpufreq|ixgbe|pf_ring|tcp_htcp|cfg80211|x86_pkg_temp_thermal|mei_me|mei|processor|thermal_sys|lp|enclosure|ses|ehci_pci|igb|i2c_i801|pps_core|isofs|nls_utf8|xt_REDIRECT|xt_multiport|iosf_mbi|qxl|cdc_ether|usbnet|bluetooth" 2>/dev/null`
+	if [[ "$unusualMod" == "" ]]; then
+		echo -e "\e[1;32mNormal. No unusual module found\033[0m"
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+		No unusual module found
+		</span></p>
+		" >> ./report/EG_report_${timeStamp}.html
+	else
+		echo "<p><span style='padding-left: 19px; background: url(../template/pic/high.png) no-repeat;'>
+		Found unusual modules:
+		</span>
+		</br>
+		" >> ./report/EG_report_${timeStamp}.html
+		while read line; do
+			IFS=" "
+			tmpArr=($line)
+			echo -e "\e[1;33mLow risk. Module: ${tmpArr[0]}\033[0m"
+			echo "Module: ${tmpArr[0]} </br>" >> ./report/EG_report_${timeStamp}.html
+		done <<< "$unusualMod"
+		echo "</p>" >> ./report/EG_report_${timeStamp}.html
+	fi
 
-	echo -e "\e[0;36m\nPlease input a path to check e.g.\e[1;35m.\e[0;36m or \e[1;35mnext\e[0;36m to execute the next instruction.\033[0m"
-	echo -e "\e[0;36mAnd then input the perm you want to check e.g.\e[1;35mr--------\e[0;36m.or \e[1;35mnext\e[0;36m to skip this step.\033[0m"
-	echo -e "Defualtly, \e[1;35mrwxrwxrwx\e[0;36m will be checked."
-	echo -e "\e[1;32mPlease input a path:\033[0m"
-	read FilesPath
+	echo "</div>" >> ./report/EG_report_${timeStamp}.html
+}
 
-	while [[ "$FilesPath" != "next" ]]; do
-		echo -e "\e[1;32mPlease input the target permissions:\033[0m"
-		read TgtPerm
+#######################################################################
+# audit system check
+#
+#######################################################################
+function AuditChk() {
+	if [ "$(apt -v 2>/dev/null)" ]; then
+		if [ "$(auditd 2>/dev/null)" ]; then
+			echo -e "\e[1;32mNormal. Linux Auditing System found.\033[0m"
+			echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+			Linux Auditing System found
+			</span></p>
+			" >> ./report/EG_report_${timeStamp}.html
+		else
+			echo -e "\e[1;33mLow risk. No Linux Auditing System\033[0m"
+			echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+			No Linux Auditing System
+			</span></p>
+			" >> ./report/EG_report_${timeStamp}.html
+		fi
+	elif [ "$(yum --version 2>/dev/null)" ]; then
+		if [ "$(yum list audit audit-libs 2>/dev/null | grep audit)" ]; then
+			echo -e "\e[1;32mNormal. Linux Auditing System found.\033[0m"
+			echo "<p><span style='padding-left: 19px; background: url(../template/pic/normal.png) no-repeat;'>
+			Linux Auditing System found
+			</span></p>
+			" >> ./report/EG_report_${timeStamp}.html
+		else
+			echo -e "\e[1;33mLow risk. No Linux Auditing System\033[0m"
+			echo "<p><span style='padding-left: 19px; background: url(../template/pic/low.png) no-repeat;'>
+			No Linux Auditing System
+			</span></p>
+			" >> ./report/EG_report_${timeStamp}.html
+		fi
+	fi
 
-		for File in ${FilesPath}/*; do
-			#echo -e "file: $File\n"
-			FilePermission=$(ls -l ${File} | cut -c 2-10)
-			#echo -e "perm: $FilePermission"
-			GroupPermission=$(ls -l ${File} | cut -c 5-7)
-			#echo -e "Gprem: $GroupOwnerId"
-			GroupOwnerId=$(ls -n ${File} | awk '{print $4}')
-			#echo -e "GOID: $GroupOwnerId"
-			Owner=$(ls -l ${File} | awk -F" " '{print $3}')
-			#echo -e "Owner: $Owner"
-			OwnerId=$(ls -n ${File} | awk -F" " '{print $3}')
-			#echo -e "OID: $OwnerId"
-
-			# without TgtPerm, check for files with all rwx perms
-			if [ "$TgtPerm" = "next" ]; then
-				if [ "${FilePermission}" = "rwxrwxrwx" ]; then
-					Issue=1
-					IssueType="perms"
-					echo -e "\e[1;34m${File} has perms: ${FilePermission}.\033[0m"
-				fi
-
-			# check for files perms according to target perms
-		elif [[ "${FilePermission}" == "${TgtPerm}" ]];then
-				echo -e "\e[1;34m${File} has perms: ${FilePermission}.\033[0m"
-				if [[ "${GroupOwnerId}" != "${OwnerId}" ]]; then
-					Issue=1;
-					IssueType="perms"
-					echo -e "\033[0mRecommand to change file perms of ${File} to 640."
-				fi
-			fi
-
-			#check if it's root user to run scan
-			if [ ! "${Owner}" = "root" -a ! "${OwnerId}" = "0" ]; then
-				if [ ! "${CurrentId}" = "${OwnerId}" ]; then
-					Issue=1
-					IssueType="owner"
-					ShowPermissionErr=1;
-					IssueFile="${File}" #the file with issue
-					IssueOwner="${Owner}"
-					IssueOwnerId="${OwnerId}"
-				fi
-			fi
-
-		done
-		echo -e "\e[1;32mPlease input a path:\033[0m"
-		read FilesPath
-	done
+	echo "</div>" >> ./report/EG_report_${timeStamp}.html
 }
 
 ####################################################################
@@ -400,51 +535,47 @@ function OVALChk() {
 	releaseVersionIDStr=`echo ${releaseVersionID//./}`
 	#echo "$releaseVersionIDStr"
 
-	targetOVALFile="${releaseNameStr}_${releaseVersionIDStr}.xml"
-	#echo "$targetOVALFile"
-	hasOVALFile=`ls | grep ${targetOVALFile} 2>/dev/null`
-	if [ "$hasOVALFile" ]; then
-		echo -e "\e[1;34mOVAL file found:\e[00m\n$targetOVALFile\n\033[0m" 2>/dev/null
+	#default ssg:centos7 oval:redhat7
+	targetSSGFile="ssg-${releaseNameStr}${releaseVersionIDStr}-ds.xml"
+	targetOVALFile="${releaseNameStr}${releaseVersionIDStr}.oval.xml"
+
+	hasSSGFile=`ls ssg | grep ${targetSSGFile} 2>/dev/null`
+	if [ "$hasSSGFile" ]; then
+		# ssg check
+		echo -e "\e[1;34mSSG file found:\e[00m\n$targetSSGFile\033[0m"
+		oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_standard --results ./report/sec_conf_${timeStamp}.xml --report ./report/sec_conf_${timeStamp}.html ./ssg/${targetSSGFile}
 	else
-		echo -e "\e[0;36mNo target OVALFile found. Downloading...\n\033[0m" 2>/dev/null
-		wget -q https://oval.cisecurity.org/repository/download/5.11.2/vulnerability/${targetOVALFile}
-		hasOVALFile=`ls | grep ${targetOVALFile} 2>/dev/null`
+		echo -e "\e[1;34mNo SSG file found. Use centos7.\033[0m"
+		oscap xccdf eval --profile xccdf_org.ssgproject.content_profile_standard --results ./report/sec_conf_${timeStamp}.xml --report ./report/sec_conf_${timeStamp}.html ./ssg/ssg-centos7-ds.xml
+	fi
+
+	hasOVALFile=`ls ssg | grep ${targetOVALFile} 2>/dev/null`
+	if [ "$hasOVALFile" ]; then
+		#echo "has oval file"
+		echo -e "\e[1;34mOVAL file found:\e[00m\n$targetOVALFile\033[0m"
+		oscap oval eval --results ./report/comp_vuln_${timeStamp}.xml --report ./report/comp_vuln_${timeStamp}.html ./ssg/${targetOVALFile}
+	else
+		targetOVALFile="${releaseNameStr}.oval.xml"
+		hasOVALFile=`ls ssg | grep ${targetOVALFile} 2>/dev/null`
 		if [ "$hasOVALFile" ]; then
-			:
-			#echo "has oval file"
+			echo -e "\e[1;34mOVAL file found:\e[00m\n$targetOVALFile\033[0m"
+			oscap oval eval --results ./report/comp_vuln_${timeStamp}.xml --report ./report/comp_vuln_${timeStamp}.html ./ssg/${targetOVALFile}
 		else
-			wget -q https://oval.cisecurity.org/repository/download/5.11.2/vulnerability/centos_linux_73.xml
-			targetOVALFile="centos_linux_73.xml"
+			echo -e "\e[1;34mNo OVAL file found. Use rhel7.\033[0m"
+			oscap oval eval --results ./report/comp_vuln_${timeStamp}.xml --report ./report/comp_vuln_${timeStamp}.html ./ssg/rhel7.oval.xml
 		fi
 	fi
 
-	oscap oval eval --results ./oscap_results.xml --report ./report/oscap_report.html ${targetOVALFile}
-	echo -e "\e[1;34mPlease check for vuln scan results in oscap_results.xml and oscap_report.html\n\033[0m" 2>/dev/null
-}
+	echo -e "\e[1;34mPlease check the reports in report dir\033[0m" 2>/dev/null
 
-
-########################################################################
-# log auditing
-########################################################################
-function LogAudit() {
-:
-}
-
-
-#####################################################################
-# Function
-# Function [functionName] [var1 var2 ...]
-#####################################################################
-function Function {
-	functionName=$1 #第一个参数，函数名
-	shift 1 #参数左移1
-	args=$@ #每个参数
-	${functionName} ${args} #执行function, 格式为函数名 参数
-	if [[ "$?" -eq 0 ]]; then #执行function退出状态不出错
-		echo -e ${functionName} ${args} "\e[0;32mCheck passed. \033[0m"
-	else
-		echo -e ${functionName} ${args} "\e[0;31mCheck failed. \033[0m"
-	fi
+	echo "<div class='each-part'>
+		<h2><a href='sec_conf_${timeStamp}.html'>Security Configuration Scan</a></h2>
+	</div>
+	" >> ./report/EG_report_${timeStamp}.html
+	echo "<div class='each-part'>
+		<h2><a href='comp_vuln_${timeStamp}.html'>OVAL Scan</a></h2>
+	</div>
+	" >> ./report/EG_report_${timeStamp}.html
 }
 
 #####################################################################
@@ -455,19 +586,20 @@ function ReportHead() {
 	echo "<!DOCTYPE html>
 	<html lang='en' dir='ltr'>
 		<head>
+			<!--This file should be under res/-->
 			<meta charset='utf-8'>
 			<meta name='viewport' content='width=device-width,initial-scale=1'>
-			<script src='https://rawgit.com/aFarkas/html5shiv/gh-pages/dist/html5shiv.min.js'></script>
-			<link rel='stylesheet' href='normalize.css'>
-			<title></title>
+			<link href='../template/pic/logo.ico' type='image/x-icon'>
+			<title>Euler Guardian</title>
+			<link rel='stylesheet' href='../template/normalize.css'>
+		    <link rel='stylesheet' type='text/css' href='../template/report.css'>
 		</head>
-		<body>" > ./report/${timeStamp}_EG_report.html
+		<body>" > ./report/EG_report_${timeStamp}.html
 }
 
 function ReportFoot() {
 	timeStamp2Date=`date -d @${timeStamp}`
-	echo "<div>$timeStamp2Date</div>
-	</body></html>" >> ./report/${timeStamp}_EG_report.html
+	echo -e "</body></html>" >> ./report/EG_report_${timeStamp}.html
 }
 
 #####################################################################
@@ -497,24 +629,29 @@ else
 	echo -e "Silent mode is not chosen."
 fi
 
-echo -e "\e[1;34m-----------------------------------------------"
-echo "System information check start"
+echo -e "\n\e[1;34m-----------------------------------------------"
+echo "System information check"
 echo -e "-----------------------------------------------\033[0m"
 PreOp
+ReportHead
 SysInfoChk
 SecCheck
+AuditChk
 
-echo -e "\e[1;34m-----------------------------------------------"
-echo "Users information check start"
+echo -e "\n\e[1;34m-----------------------------------------------"
+echo "Users information and access control check"
 echo -e "-----------------------------------------------\033[0m"
 UserInfoChk
+UserIdenChk
 
-echo -e "\e[1;34m-----------------------------------------------"
-echo "Files permissions check start"
+echo -e "\n\e[1;34m-----------------------------------------------"
+echo "Files check"
 echo -e "-----------------------------------------------\033[0m"
-FilePermChk
+FileChk
 
-echo -e "\e[1;34m-----------------------------------------------"
-echo "Software vuln check start"
+echo -e "\n\e[1;34m-----------------------------------------------"
+echo "Software vuln check"
 echo -e "-----------------------------------------------\033[0m"
 OVALChk
+
+ReportFoot
