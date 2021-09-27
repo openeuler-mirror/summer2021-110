@@ -1,5 +1,14 @@
-# Summer2021-No.110 操作系统安全漏洞扫描与报警项目
+# Summer2021-No.110 Euler Guardian 操作系统安全漏洞扫描与报警项目
 
+Euler Guardian: 为openEuler社区开发的Linux操作系统通用风险评估工具
+
+github 地址:
+
+https://github.com/Crane-Mocker/Euler-Guardian
+
+gitee 地址：
+
+https://gitee.com/openeuler-competition/summer2021-110
 
 <!-- vim-markdown-toc GFM -->
 
@@ -12,7 +21,7 @@
 		* [SecCheck 安全策略检查](#seccheck-安全策略检查)
 		* [UserInfoChk 用户信息检查](#userinfochk-用户信息检查)
 		* [UserIdenChk 用户身份检查](#useridenchk-用户身份检查)
-		* [FileChk 文件权限检查](#filechk-文件权限检查)
+		* [FileChk 文件检查](#filechk-文件检查)
 		* [AuditChk 操作系统安全审计](#auditchk-操作系统安全审计)
 		* [OVALChk 软件包版本漏洞检查](#ovalchk-软件包版本漏洞检查)
 	* [ER emergency response 应急响应模块](#er-emergency-response-应急响应模块)
@@ -43,19 +52,31 @@
 ## front end 前端
 
 初始化CSS来自：
+
 https://necolas.github.io/normalize.css/8.0.1/normalize.css
 
 ## 模块说明
 
 ### local scan 本地扫描模块
 
-本模块需以root权限运行。
+本模块需以root权限运行。运行完成后将生成报告。
 
-运行完成后将生成报告。
+报告分为四部分：
+
+1. 扫描结果汇总，表格形式，点击超链接跳转查看详细信息
+
+![LS-index](pic/LS-report-index.gif)
+
+2. 详细信息报告。所有扫描结果的详细信息。(有锚点)
 
 ![LS-report](pic/LS-report.gif)
-![LS-report](pic/LS-report-2.png)
+
+3. Secure configuration 报告
+
 ![LS-SSG](pic/LS-SSG.png)
+
+4. CVE 报告
+
 ![LS-OVAL](pic/LS-OVAL.png)
 
 #### PreOp 预操作
@@ -118,8 +139,11 @@ https://blog.csdn.net/xiezuoyong/article/details/49890695
 **auth**类接口对用户身份进行识别认证
 
 `pam_env.so`定义用户登录之后的环境变量
+
 `pam_unix.so`提示用户输入口令，并与/etc/shadow进行对比
+
 `pam_succeed_if.so`限制登录条件。在Linux系统中，一般系统用户的uid都在500之内，`uid >= 500 quiet`表示允许uid >= 500的用户登录，即使用useradd命令以及默认选项建立的普通用户直接由本地控制台登录系统。
+
 `pam_deny.so`拒绝不匹配任何规则的登录
 
 **password**接口确认用户使用的口令的合法性
@@ -130,7 +154,7 @@ https://blog.csdn.net/xiezuoyong/article/details/49890695
 
 7.空口令用户检查
 
-#### FileChk 文件权限检查
+#### FileChk 文件检查
 
 ![LS-file](pic/LS-file.png)
 
@@ -140,16 +164,22 @@ https://blog.csdn.net/xiezuoyong/article/details/49890695
 
 3. 查找孤儿文件。
 
+4. 检查加载到内核的不常见module
+
 #### AuditChk 操作系统安全审计
 
 Linux Auditing System
+
 对于CentOS系:需要audit, audit-libs
+
 对于debian系:需要auditd
 
-对于openEuler的安全加固
-(to do)
+对于openEuler的安全加固(to do)
+
 文档：
+
 https://docs.openeuler.org/zh/docs/20.03_LTS/docs/SecHarden/%E6%93%8D%E4%BD%9C%E7%B3%BB%E7%BB%9F%E5%8A%A0%E5%9B%BA%E6%A6%82%E8%BF%B0.html
+
 https://docs.openeuler.org/zh/docs/20.03_LTS/docs/SecHarden/%E5%AE%89%E5%85%A8%E5%8A%A0%E5%9B%BA%E5%B7%A5%E5%85%B7.html
 
 
@@ -160,14 +190,26 @@ https://docs.openeuler.org/zh/docs/20.03_LTS/docs/SecHarden/%E5%AE%89%E5%85%A8%E
 ![LS-SSG](pic/LS-SSG-cli.png)
 
 基线库来自：
+
 https://github.com/ComplianceAsCode/content
+
 https://oval.cisecurity.org/repository/download
+
 https://security-metadata.canonical.com
+
 https://www.redhat.com/security/data/oval/v2/
 
 ### ER emergency response 应急响应模块
 
 使用场景: Linux受到入侵后的自动化快速应急响应。
+
+可以选择是否生成HTML报告。
+
+![ER-cli](pic/ER-cli.png)
+
+生成报告为表格形式
+
+![ER-chart](pic/ER-chart.png)
 
 #### BasicCheck
 
