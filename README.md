@@ -2,16 +2,12 @@
 
 Euler Guardian: 为openEuler社区开发的Linux操作系统通用风险评估工具
 
-github 地址:
-
-https://github.com/Crane-Mocker/Euler-Guardian
-
 gitee 地址：
-
 https://gitee.com/openeuler-competition/summer2021-110
 
 <!-- vim-markdown-toc GFM -->
 
+* [配置](#配置)
 * [配色](#配色)
 * [front end 前端](#front-end-前端)
 * [模块说明](#模块说明)
@@ -24,6 +20,7 @@ https://gitee.com/openeuler-competition/summer2021-110
 		* [FileChk 文件检查](#filechk-文件检查)
 		* [AuditChk 操作系统安全审计](#auditchk-操作系统安全审计)
 		* [OVALChk 软件包版本漏洞检查](#ovalchk-软件包版本漏洞检查)
+		* [SendEmail 邮件预警](#sendemail-邮件预警)
 	* [ER emergency response 应急响应模块](#er-emergency-response-应急响应模块)
 		* [BasicCheck](#basiccheck)
 		* [SensitiveFileCheck](#sensitivefilecheck)
@@ -37,6 +34,43 @@ https://gitee.com/openeuler-competition/summer2021-110
 * [Reference](#reference)
 
 <!-- vim-markdown-toc -->
+
+## 配置
+
+首先，在使用前进行配置。
+
+当您仅使用应急响应模块时，本配置并不必要。
+
+1. 运行 config.sh
+
+```bash
+chmod +x config.sh
+su
+./config.sh
+```
+
+2. 配置 ssmtp
+
+当您不使用邮件预警通知用户时，本配置并不必要。
+
+```bash
+vi /etc/ssmtp/ssmtp.conf # root privilidge is needed
+```
+
+依照以下示例，更改配置
+
+```
+root=username@gmail.com
+mailhub=smtp.gmail.com:465
+rewriteDomain=gmail.com
+AuthUser=username
+AuthPass=authcode
+FromLineOverride=YES
+UseTLS=YES
+```
+
+**注意：在发送邮件时，发件人地址需与此处填写地址相同**
+
 
 ## 配色
 
@@ -60,6 +94,13 @@ https://necolas.github.io/normalize.css/8.0.1/normalize.css
 ### local scan 本地扫描模块
 
 本模块需以root权限运行。运行完成后将生成报告。
+
+```
+Usage:
+	-h	 help
+	-f	 sender email addr
+	-t	 receiver email addr
+```
 
 报告分为四部分：
 
@@ -198,6 +239,17 @@ https://oval.cisecurity.org/repository/download
 https://security-metadata.canonical.com
 
 https://www.redhat.com/security/data/oval/v2/
+
+#### SendEmail 邮件预警
+
+发送邮件预警。
+
+![LS-SendEmail](pic/LS-SendEmail.png)
+
+![LS-Succ](pic/LS-Succ.png)
+
+![LS-Email](pic/LS-Email.png)
+
 
 ### ER emergency response 应急响应模块
 

@@ -2,17 +2,13 @@
 
 Euler Guardian: generic Linux operating system risk assessment tool for openEuler community
 
-github:
-
-https://github.com/Crane-Mocker/Euler-Guardian
-
 gitee：
-
 https://gitee.com/openeuler-competition/summer2021-110
 
 
 <!-- vim-markdown-toc GFM -->
 
+* [Configuration](#configuration)
 * [color in CLI](#color-in-cli)
 * [front end](#front-end)
 * [Module](#module)
@@ -25,6 +21,7 @@ https://gitee.com/openeuler-competition/summer2021-110
 		* [FileChk](#filechk)
 		* [AuditChk](#auditchk)
 		* [OVALChk](#ovalchk)
+		* [SendEmail](#sendemail)
 	* [ER emergency response module](#er-emergency-response-module)
 		* [BasicCheck](#basiccheck)
 		* [SensitiveFileCheck](#sensitivefilecheck)
@@ -38,6 +35,42 @@ https://gitee.com/openeuler-competition/summer2021-110
 * [Reference](#reference)
 
 <!-- vim-markdown-toc -->
+
+## Configuration
+
+Firstly, finish configuration before using.
+
+This configuration is not obliged if you only use emergency response module.
+
+1. run config.sh
+
+```bash
+chmod +x config.sh
+su
+./config.sh
+```
+
+2. Config ssmtp
+
+This configuration is not obliged when you do not send emails to inform users.
+
+```bash
+vi /etc/ssmtp/ssmtp.conf # root privilidge is needed
+```
+
+Change the file like this
+
+```
+root=username@gmail.com
+mailhub=smtp.gmail.com:465
+rewriteDomain=gmail.com
+AuthUser=username
+AuthPass=authcode
+FromLineOverride=YES
+UseTLS=YES
+```
+
+**Notice: When sending an email, the fromAddr should be the address you set in configuration**
 
 ## color in CLI
 
@@ -61,6 +94,13 @@ https://necolas.github.io/normalize.css/8.0.1/normalize.css
 ### local scan module
 
 This module should be run as root. Reports will be generated after scanning.
+
+```
+Usage:
+	-h	 help
+	-f	 sender email addr
+	-t	 receiver email addr
+```
 
 There are 4 reports generated in total.
 
@@ -196,6 +236,16 @@ https://oval.cisecurity.org/repository/download
 https://security-metadata.canonical.com
 
 https://www.redhat.com/security/data/oval/v2/
+
+#### SendEmail
+
+Send email to user.
+
+![LS-SendEmail](pic/LS-SendEmail.png)
+
+![LS-Succ](pic/LS-Succ.png)
+
+![LS-Email](pic/LS-Email.png)
 
 ### ER emergency response module
 

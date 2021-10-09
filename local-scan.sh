@@ -14,6 +14,10 @@ scanRes=()
 # risk level of each scan
 riskLevel=()
 
+fromAddr=""
+toAddr=""
+emailFlag=0
+
 #######################################################################
 # pre operations
 # 1. generate timeStamp
@@ -565,7 +569,7 @@ function OVALChk() {
 			:
 		else
 			echo -e "\e[1;34mNo oscap. Downloading...\n\033[0m" 2>/dev/null
-			sudo apt-get install libopenscap8
+			apt-get install libopenscap8
 		fi
 	elif [ "$(yum --version 2>/dev/null)" ]; then
 		# use yum
@@ -576,7 +580,7 @@ function OVALChk() {
 			:
 		else
 			echo -e "\e[1;34mNo oscap. Downloading...\n\033[0m" 2>/dev/null
-			sudo yum install openscap-utils -y
+			yum install openscap-utils -y
 		fi
 	fi
 
@@ -856,6 +860,130 @@ function ReportSum() {
 }
 
 #####################################################################
+#  Send email
+#####################################################################
+function SendEmail() {
+    #fromAddr="xx@xx.com"
+    #toAddr="xx@xx.com"
+    emailBody=`echo "
+            <!DOCTYPE html>
+                <html lang='en' dir='ltr'>
+                <body>
+                <div>
+                        <h2>System Information</h2>
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td>OS</td>
+                                    <td>${releaseNameStr} ${releaseVersionID}</td>
+                                </tr>
+                                <tr>
+                                    <td>Kernel</td>
+                                    <td>${kernelName} ${kernelRelease}</td>
+                                </tr>
+                                <tr>
+                                    <td>Platform</td>
+                                    <td>${hardwareP}</td>
+                                </tr>
+                                <tr>
+                                    <td>SELinux</td>
+                                    <td>${scanRes[0]}</td>
+                                </tr>
+                                <tr>
+                                    <td>Limitations for various resources</td>
+                                    <td>${scanRes[1]} items</td>
+                                </tr>
+                                <tr>
+                                    <td>Linux Auditing System</td>
+                                    <td>${scanRes[2]}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                </div>
+
+                <div>
+                        <h2>User Information</h2>
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td>Hostname</td>
+                                    <td>${Hostname}</td>
+                                </tr>
+                                <tr>
+                                    <td>Current UID</td>
+                                    <td>${scanRes[3]}</td>
+                                </tr>
+                                <tr>
+                                    <td>Found passwords in /etc/passwd stored as hash</td>
+                                    <td>${scanRes[4]}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                </div>
+
+                <div>
+                        <h2>User identity and access control</h2>
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td>basic password configuration</td>
+                                    <td>${scanRes[5]}</td>
+                                </tr>
+                                <tr>
+                                    <td>pam Cracklib configuration</td>
+                                    <td>${scanRes[6]}</td>
+                                </tr>
+                                <tr>
+                                    <td>User without password</td>
+                                    <td>${scanRes[7]}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                </div>
+
+                <div>
+                        <h2>Files Check</h2>
+                        <table>
+                            <tbody>
+                                <tr>
+                                    <td>File(s) with S perm</td>
+                                    <td>${scanRes[8]}</td>
+                                </tr>
+                                <tr>
+                                    <td>777 perm file(s) without group belonged to</td>
+                                    <td>${scanRes[9]}</td>
+                                </tr>
+                                <tr>
+                                    <td>orphan file(s)</td>
+                                    <td>${scanRes[10]}</td>
+                                </tr>
+                                <tr>
+                                    <td>Unusual kernel module(s)</td>
+                                    <td>${scanRes[11]}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                </div>
+                <h2>Please check details according to the reports.</h2>
+                </body>
+                </html>
+    "`
+    {
+    # generate email headers and begin of the body asspecified by HERE document
+	cat <<-EMAIL
+	To: Dear User<${toAddr}>
+	From: Euler Guardian<${fromAddr}>
+	Subject: Euler Guardian Report
+	Content-Type: text/html; charset=UTF-8
+
+	${emailBody}
+
+	EMAIL
+
+    } | sendmail -t && echo -e "\e[1;32mSucc: Mail sent.\033[0m"
+}
+
+#####################################################################
 #  Program Starts
 #####################################################################
 
@@ -869,17 +997,50 @@ echo "This is the local scan module."
 echo -e "-----------------------------------------------\033[0m"
 
 # parameter process
-# -h
-if [[ $1 == "--help" ]]||[[ $1 == "-h" ]]; then
-	echo -e "This is the local scan module of Euler Guardian.\nRoot is needed to run the scan.\nAn HTML report will be generated according to the scan results.\nUsage:\n\t-h, --help\t help\n\t-s, --silent\t Do not display details"
-# -s
-elif [[ $1 == "--silent" ]]||[[ $1 == "-s" ]]; then
-	isSilent=1
-	echo -e "Silent mode is chosen."
-# no param or wrong param
+while getopts ":f:t:h" cliName; do
+    case "${cliName}" in
+        h)
+            echo -e "This is the local scan module of Euler Guardian.\nRoot is needed to run the scan.\nAn HTML report will be generated according to the scan results.\nUsage:\n\t-h\t help\n\t-f\t sender email addr\n\t-t\t receiver email addr"
+            ;;
+        f)
+            fromAddr=${OPTARG}
+            if [[ $fromAddr =~ ^([A-Za-z0-9_\-\.\u4e00-\u9fa5])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,8})$ ]]; then
+                :
+            else
+                echo -e "\e[0;31mThere should be an email addr after -f\033[0m"
+                exit
+            fi
+            ;;
+        t)
+            toAddr=${OPTARG}
+            if [[ $toAddr =~ ^([A-Za-z0-9_\-\.\u4e00-\u9fa5])+\@([A-Za-z0-9_\-\.])+\.([A-Za-z]{2,8})$ ]]; then
+                :
+            else
+                echo -e "\e[0;31mThere should be an email addr after -t\033[0m"
+                exit
+            fi
+            ;;
+        :)
+            echo -e "\e[0;31mNo argument value for option $OPTARG\033[0m"
+            ;;
+        *)
+            echo -e "\e[0;31mUnknown option $OPTARG\033[0m"
+            echo -e "This is the local scan module of Euler Guardian.\nRoot is needed to run the scan.\nAn HTML report will be generated according to the scan results.\nUsage:\n\t-h\t help\n\t-f\t sender email addr\n\t-t\t receiver email addr"
+            exit
+            ;;
+    esac
+done
+shift $((OPTIND-1))
+
+# do not sent email
+if [[ "${fromAddr}" == "" ]] && [[ "${toAddr}" == "" ]]; then
+    emailFlag=0
+elif [[ "${fromAddr}" == "" ]] || [[ "${toAddr}" == "" ]]; then
+    echo -e "\e[0;31mTo send an email, -f and -t are both needed\033[0m"
+	exit
 else
-	isSilent=0
-	echo -e "Silent mode is not chosen."
+	emailFlag=1
+    echo "Send email from ${fromAddr} to ${toAddr}"
 fi
 
 echo -e "\n\e[1;34m-----------------------------------------------"
@@ -912,3 +1073,7 @@ echo "Generating reports"
 echo -e "-----------------------------------------------\033[0m"
 ReportFoot
 ReportSum
+
+if [[ $emailFlag -eq 1 ]]; then
+	SendEmail
+fi
